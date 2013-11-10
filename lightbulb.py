@@ -7,6 +7,7 @@ cfl_lamps_for_adopters = 0.2
 halogen_prob = 0.2
 change_socket_prob = 0.15
 max_usage_per_week = 20
+decision_noise = 0.1
 lum_distribution = [
     dict(socket='E27', shape='Pear', value=70),
     dict(socket='E14', shape='Pear', value=7),
@@ -16,6 +17,7 @@ lum_distribution = [
     dict(socket='G24d2', shape='Reflector', value=0),
     ]        
 import random
+import math
 
 class Person:
     def __init__(self):
@@ -111,8 +113,27 @@ class Person:
         for lamp in lamps.lamps:
             if change_socket or (lamp['socket']==socket and lamp['shape']==shape):
                 options.append(lamp)
+                
+        if len(options)==0:
+            print 'cannot find', socket, shape
         
-        new_lamp = random.choice(options)
+        utility = [decision_noise*math.log(1.0/random.random()-1.0)]*len(options)
+        for feature in ['price']:
+            values = [opt['price'] for opt in options]
+            minv = min(values)
+            maxv = max(values)
+            for i, v in enumerate(values):
+                u = (v-minv)/(maxv-minv) if (maxv!=minv) else 0.5   
+                u = 1-u
+                utility[i] += u*self.weight[feature]
+        
+        choice = None
+        for i, u in enumerate(utility):
+            if choice is None or u>choice_u:
+                choice = i
+                choice_u = u
+        
+        new_lamp = options[i]
         self.add_lamp(new_lamp)
 
 
@@ -182,26 +203,99 @@ class Lamps:
         return None        
                 
         
+class Intervention:
+    def __init__(self, lamps, people):
+        self.lamps = lamps
+        self.people = people
+    
+    def step(self):
+        pass
+        
+class BanIntervention(Intervention):
+    def __init__(self, lamps, people, type, years):
+        Intervention.__init__(self, lamps, people)
+        self.type = type
+        self.years = years
+        self.time = 0
+        self.banlamps = [lamp for lamp in self.lamps.lamps if lamp['type']==type]
+        self.banlamps.sort(key = lambda x: -x['power']/x['output'])
+        self.steps_per_ban = int(years*52/len(self.banlamps))
+    
+    def step(self):
+        self.time += 1
+        if self.time%self.steps_per_ban == 0 and len(self.banlamps)>0:
+            self.lamps.lamps.remove(self.banlamps[0])
+            print 'ban', self.time, self.banlamps[0]
+            del self.banlamps[0]
+
+class TaxIntervention(Intervention):
+    def __init__(self, lamps, people, type, years, max_amount):
+        Intervention.__init__(self, lamps, people)
+        self.type = type
+        self.years = years
+        self.time = 0
+        self.max_amount = max_amount
+        self.affected = [lamp for lamp in self.lamps.lamps if lamp['type']==type]
+        self.dtax = max_amount/(years*52)
+        
+    def step(self):
+        self.time += 1
+        if self.time < self.years*52: 
+            for lamp in self.affected:
+                lamp['price'] += self.dtax
+            
+class SubsidyIntervention(Intervention):
+    def __init__(self, lamps, people, type, years, max_amount):
+        Intervention.__init__(self, lamps, people)
+        self.type = type
+        self.years = years
+        self.time = 0
+        self.max_amount = max_amount
+        self.affected = [lamp for lamp in self.lamps.lamps if lamp['type']==type]
+        self.dsubsidy = max_amount/(years*52)
+        self.base = [lamp['price'] for lamp in self.affected]
+        for lamp in self.affected:
+            lamp['price'] *= (1.0-max_amount)
+        
+    def step(self):
+        self.time += 1
+        if self.time < self.years*52: 
+            for i, lamp in enumerate(self.affected):
+                lamp['price'] += self.dsubsidy*self.base[i]
+            
+            
+    
+        
 lamps = Lamps()
     
 people = People(pop_size) 
 
+interventions = [
+    #BanIntervention(lamps, people, 'Incandescent', 5),
+    TaxIntervention(lamps, people, 'Incandescent', 5, 200.0),
+    SubsidyIntervention(lamps, people, 'Incandescent', 5, 0.33),
+    ]
 
 type_incandescent = []
 type_cfl = []
 type_halogen = []
+type_led = []
 time = []
-for y in range(10):
-    for w in range(52):
-        people.step()
+for y in range(30):
     type_incandescent.append(people.get_count(type='Incandescent'))
     type_cfl.append(people.get_count(type='CFL'))    
     type_halogen.append(people.get_count(type='Halogen'))    
+    type_led.append(people.get_count(type='LED'))    
     time.append(y)
+    for w in range(52):
+        people.step()
+        for interv in interventions:
+            interv.step()
     
 import pylab
 pylab.plot(time, type_incandescent, label='Incandescent')    
 pylab.plot(time, type_cfl, label='CFL') 
 pylab.plot(time, type_halogen, label='Halogen')       
+pylab.plot(time, type_led, label='LED')       
 pylab.legend()
 pylab.show()
