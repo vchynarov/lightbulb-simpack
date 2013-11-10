@@ -8,6 +8,13 @@ halogen_prob = 0.2
 change_socket_prob = 0.15
 max_usage_per_week = 20
 decision_noise = 0.1
+years = 20
+
+import random
+import math
+import modex
+
+
 lum_distribution = [
     dict(socket='E27', shape='Pear', value=70),
     dict(socket='E14', shape='Pear', value=7),
@@ -18,6 +25,9 @@ lum_distribution = [
     ]        
 import random
 import math
+import modex
+
+log = modex.log()
 
 class Person:
     def __init__(self):
@@ -281,7 +291,7 @@ type_cfl = []
 type_halogen = []
 type_led = []
 time = []
-for y in range(30):
+for y in range(years):
     type_incandescent.append(people.get_count(type='Incandescent'))
     type_cfl.append(people.get_count(type='CFL'))    
     type_halogen.append(people.get_count(type='Halogen'))    
@@ -292,6 +302,13 @@ for y in range(30):
         for interv in interventions:
             interv.step()
     
+    log.time = y
+    log.count_incandescent = people.get_count(type='Incandescent')
+    log.count_cfl = people.get_count(type='CFL')
+    log.count_halogen = people.get_count(type='Halogen')
+    log.count_led = people.get_count(type='LED')
+        
+"""    
 import pylab
 pylab.plot(time, type_incandescent, label='Incandescent')    
 pylab.plot(time, type_cfl, label='CFL') 
@@ -299,3 +316,4 @@ pylab.plot(time, type_halogen, label='Halogen')
 pylab.plot(time, type_led, label='LED')       
 pylab.legend()
 pylab.show()
+"""
