@@ -6,6 +6,7 @@ adopters_of_cfl = 0.6
 cfl_lamps_for_adopters = 0.2
 halogen_prob = 0.2
 change_socket_prob = 0.15
+max_usage_per_week = 20
 lum_distribution = [
     dict(socket='E27', shape='Pear', value=70),
     dict(socket='E14', shape='Pear', value=7),
@@ -76,20 +77,45 @@ class Person:
             lamp = lamps.pick(type, option['socket'], option['shape'])
             
             if lamp is not None:
-                mine = dict()
-                mine.update(lamp)
-                u = lamp['lifetime_uncertainty']
-                lamp['lifetime'] = lamp['lifetime']*random.uniform(1.0-u, 1.0+u)
-                lamp['lifetime'] = lamp['lifetime']*random.uniform(0, 1)
-               
-                self.luminaires.append(lamp)
-            
-            
+                self.add_lamp(lamp)
+                
+    def add_lamp(self, lamp):            
+        mine = dict()
+        mine.update(lamp)
+        u = mine['lifetime_uncertainty']
+        mine['lifetime'] = mine['lifetime']*random.uniform(1.0-u, 1.0+u)
+        mine['lifetime'] = mine['lifetime']*random.uniform(0, 1)
+        mine['usage'] = random.uniform(0, max_usage_per_week)
+       
+        self.luminaires.append(mine)
             
     def update_opinions(self):
         pass   # how to update opinions?
         # pos: +=0.1 if x>0 else 0.2
         # neg: -=0.3
+
+    def step(self):  # one week
+        for lamp in self.luminaires[:]:
+            lamp['lifetime'] -= lamp['usage']
+            if lamp['lifetime'] < 0:
+                self.replace(lamp)
+    
+    def replace(self, lamp):   
+        self.luminaires.remove(lamp)
+        socket = lamp['socket']
+        shape = lamp['shape']
+        
+        change_socket = random.random()<change_socket_prob
+        
+        options = []
+        for lamp in lamps.lamps:
+            if change_socket or (lamp['socket']==socket and lamp['shape']==shape):
+                options.append(lamp)
+        
+        new_lamp = random.choice(options)
+        self.add_lamp(new_lamp)
+
+
         
 class People:
     def __init__(self, size):
@@ -115,27 +141,17 @@ class People:
         #print [len(p.friends) for p in self.people]
         # TODO: is this legit?  Is this what they meant?
     
-    def step(self, dt):
-        for lamp in self.luminaires[:]:
-            lamp['lifetime'] -= dt
-            if lamp['lifetime'] < 0:
-                self.replace(lamp)
+    def step(self):
+        for p in self.people:
+            p.step()
     
-    def replace(self, lamp):    
-        self.luminaires.remove(lamp)
-        socket = lamp['socket']
-        shape = lamp['shape']
-        
-        change_socket = random.random()<change_socket_prob
-        
-        for lamp in lamps.lamps:
-            if change_socket or (lamp['socket']==socket and lamp['shape']==shape):
-                utility = self.compute_utility(lamp)
-        
-        
-    def compute_utility(self, lamp):
-        pass
-        
+    def get_count(self, type=None):
+        count = 0 
+        for p in self.people:
+            for lum in p.luminaires:
+                if type is None or type==lum['type']:
+                    count += 1
+        return count            
                 
 class Lamps:
     def __init__(self):
@@ -168,4 +184,24 @@ class Lamps:
         
 lamps = Lamps()
     
-people = People(pop_size)            
+people = People(pop_size) 
+
+
+type_incandescent = []
+type_cfl = []
+type_halogen = []
+time = []
+for y in range(10):
+    for w in range(52):
+        people.step()
+    type_incandescent.append(people.get_count(type='Incandescent'))
+    type_cfl.append(people.get_count(type='CFL'))    
+    type_halogen.append(people.get_count(type='Halogen'))    
+    time.append(y)
+    
+import pylab
+pylab.plot(time, type_incandescent, label='Incandescent')    
+pylab.plot(time, type_cfl, label='CFL') 
+pylab.plot(time, type_halogen, label='Halogen')       
+pylab.legend()
+pylab.show()
