@@ -40,9 +40,9 @@ class Person:
             cri =  weight_med * random.uniform(0.5, 1.5),
             output =  weight_low * random.uniform(0.5, 1.5),
             color =  weight_med * random.uniform(0.5, 1.5),
-            percept_type =  weight_med * random.uniform(0.5, 1.5),
-            percept_brand =  weight_low * random.uniform(0.5, 1.5),
-            percept_model =  weight_low * random.uniform(0.5, 1.5),
+            opinion_type =  weight_med * random.uniform(0.5, 1.5),
+            opinion_brand =  weight_low * random.uniform(0.5, 1.5),
+            opinion_model =  weight_low * random.uniform(0.5, 1.5),
             )
         self.opinions = dict(
             type = dict(),
@@ -128,14 +128,22 @@ class Person:
             print 'cannot find', socket, shape
         
         utility = [decision_noise*math.log(1.0/random.random()-1.0)]*len(options)
-        for feature in ['price']:
-            values = [opt['price'] for opt in options]
+        for feature in ['price', 'efficiency', 'lifetime', 'cri', 'color', 'output']:            
+            values = [opt[feature] for opt in options]
             minv = min(values)
             maxv = max(values)
+            midv = (minv + maxv)/2
             for i, v in enumerate(values):
-                u = (v-minv)/(maxv-minv) if (maxv!=minv) else 0.5   
-                u = 1-u
+                u = (v-midv)/(maxv-midv) if (maxv!=minv) else 0.5   
+                if feature in ['price', 'color']:
+                    u = -u
                 utility[i] += u*self.weight[feature]
+        for i, option in enumerate(options):
+            utility[i] += self.opinions['model'].get(option['label'], 0) * self.weight['opinion_model']
+            utility[i] += self.opinions['brand'].get(option['label'].split()[0], 0) * self.weight['opinion_brand']
+            utility[i] += self.opinions['type'].get(option['type'], 0) * self.weight['opinion_type']
+                
+        #TODO: neighbour's opinions         
         
         choice = None
         for i, u in enumerate(utility):
@@ -197,12 +205,14 @@ class Lamps:
                 output = float(line[4]),
                 power = float(line[5]),
                 cri = float(line[6]),
-                color_temp = float(line[7]),
+                color = float(line[7]),
                 shape = line[8],
                 socket = line[9],
                 price = float(line[10]),
                 year = int(line[11]),
                 )
+            lamp['efficiency'] = lamp['output'] / lamp['power']
+            
             self.lamps.append(lamp)    
     def pick(self, type, socket, shape):
         lamp_list = list(self.lamps)
@@ -282,8 +292,8 @@ people = People(pop_size)
 
 interventions = [
     #BanIntervention(lamps, people, 'Incandescent', 5),
-    TaxIntervention(lamps, people, 'Incandescent', 5, 200.0),
-    SubsidyIntervention(lamps, people, 'Incandescent', 5, 0.33),
+    #TaxIntervention(lamps, people, 'Incandescent', 5, 200.0),
+    #SubsidyIntervention(lamps, people, 'Incandescent', 5, 0.33),
     ]
 
 type_incandescent = []
@@ -308,12 +318,12 @@ for y in range(years):
     log.count_halogen = people.get_count(type='Halogen')
     log.count_led = people.get_count(type='LED')
         
-"""    
-import pylab
-pylab.plot(time, type_incandescent, label='Incandescent')    
-pylab.plot(time, type_cfl, label='CFL') 
-pylab.plot(time, type_halogen, label='Halogen')       
-pylab.plot(time, type_led, label='LED')       
-pylab.legend()
-pylab.show()
-"""
+if True:    
+    import pylab
+    pylab.plot(time, type_incandescent, label='Incandescent')    
+    pylab.plot(time, type_cfl, label='CFL') 
+    pylab.plot(time, type_halogen, label='Halogen')       
+    pylab.plot(time, type_led, label='LED')       
+    pylab.legend()
+    pylab.show()
+    
