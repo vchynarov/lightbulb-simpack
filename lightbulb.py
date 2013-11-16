@@ -95,21 +95,39 @@ class Person:
         mine = dict()
         mine.update(lamp)
         u = mine['lifetime_uncertainty']
+        mine['expected_lifetime'] = mine['lifetime']
         mine['lifetime'] = mine['lifetime']*random.uniform(1.0-u, 1.0+u)
         mine['lifetime'] = mine['lifetime']*random.uniform(0, 1)
         mine['usage'] = random.uniform(0, max_usage_per_week)
        
         self.luminaires.append(mine)
             
-    def update_opinions(self):
-        pass   # how to update opinions?
-        # pos: +=0.1 if x>0 else 0.2
-        # neg: -=0.3
+    def update_opinion(self, lamp):
+        
+        ot = self.opinions['type'].get(lamp['type'], 0)
+        om = self.opinions['model'].get(lamp['model'], 0)
+        ob = self.opinions['brand'].get(lamp['brand'], 0)
+        
+        positive = lamp['expected_lifetime']<0
+        if positive:
+            ot += 0.1 if ot>0 else 0.2
+            om += 0.1 if om>0 else 0.2
+            ob += 0.1 if ob>0 else 0.2
+        else:
+            ot -= 0.3
+            om -= 0.3
+            ob -= 0.3
+
+        self.opinions['type'][lamp['type']] = max(-1, min(ot, 1))
+        self.opinions['model'][lamp['model']] = max(-1, min(om, 1))
+        self.opinions['brand'][lamp['brand']] = max(-1, min(ob, 1))
 
     def step(self):  # one week
         for lamp in self.luminaires[:]:
             lamp['lifetime'] -= lamp['usage']
+            lamp['expected_lifetime'] -= lamp['usage']
             if lamp['lifetime'] < 0:
+                self.update_opinion(lamp)
                 self.replace(lamp)
     
     def replace(self, lamp):   
@@ -139,8 +157,8 @@ class Person:
                     u = -u
                 utility[i] += u*self.weight[feature]
         for i, option in enumerate(options):
-            utility[i] += self.opinions['model'].get(option['label'], 0) * self.weight['opinion_model']
-            utility[i] += self.opinions['brand'].get(option['label'].split()[0], 0) * self.weight['opinion_brand']
+            utility[i] += self.opinions['model'].get(option['model'], 0) * self.weight['opinion_model']
+            utility[i] += self.opinions['brand'].get(option['brand'], 0) * self.weight['opinion_brand']
             utility[i] += self.opinions['type'].get(option['type'], 0) * self.weight['opinion_type']
                 
         #TODO: neighbour's opinions         
@@ -199,7 +217,7 @@ class Lamps:
             line = line.strip().split(',')
             lamp = dict(
                 type = line[0],
-                label = line[1],
+                model = line[1],
                 lifetime = float(line[2]),
                 lifetime_uncertainty = float(line[3]),
                 output = float(line[4]),
@@ -212,6 +230,7 @@ class Lamps:
                 year = int(line[11]),
                 )
             lamp['efficiency'] = lamp['output'] / lamp['power']
+            lamp['brand'] = lamp['model'].split()[0]
             
             self.lamps.append(lamp)    
     def pick(self, type, socket, shape):
