@@ -188,7 +188,7 @@ class People:
         self.people = [Person() for i in range(size)]
         self.make_friends()
         
-    def make_friends(self):
+    def make_friends1(self):
         edges = 0
         minf = 0
         while minf < 15:
@@ -206,7 +206,34 @@ class People:
         #print 'min:', minf, 'edges', edges
         #print [len(p.friends) for p in self.people]
         # TODO: is this legit?  Is this what they meant?
-    
+
+    def make_friends(self):
+        count = 15
+        edges = 0
+        minf = 0
+        print 'making scale-free network'
+        for j, new in enumerate(self.people):
+            if j <= count:
+                for person in self.people[:j]:
+                    new.friends.append(person)
+                    person.friends.append(new)
+            elif j>count:
+                for i in range(count):
+                    links = [len(p.friends) if p not in new.friends else 0 for p in self.people[:j]]
+                    total = sum(links)
+                    target = random.randrange(total)
+                    index = 0
+                    while target>0:
+                        target -= links[index]
+                        index += 1
+                    person = self.people[index]    
+                    new.friends.append(person)
+                    person.friends.append(new)
+                    
+        minf = min([len(p.friends) for p in self.people])            
+        print 'min graph degree:', minf
+        print [len(p.friends) for p in self.people]
+        
     def step(self):
         for p in self.people:
             p.step()
