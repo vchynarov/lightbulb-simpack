@@ -14,6 +14,13 @@ import random
 import math
 import modex
 
+price_halflife = {
+    'Incandescent': 100*52,
+    'CFL': 11*52,
+    'Halogen': 50*52,
+    'LED': 5*52,
+    }
+
 
 lum_distribution = [
     dict(socket='E27', shape='Pear', value=70),
@@ -155,6 +162,8 @@ class Person:
                 u = (v-midv)/(maxv-midv) if (maxv!=minv) else 0.5   
                 if feature in ['price', 'color']:
                     u = -u
+                if feature == 'price':
+                    u *= lamps.price_scale(options[i]['type'])
                 utility[i] += u*self.weight[feature]
         for i, option in enumerate(options):
             utility[i] += self.opinions['model'].get(option['model'], 0) * self.weight['opinion_model']
@@ -213,6 +222,7 @@ class People:
 class Lamps:
     def __init__(self):
         self.lamps = []
+        self.steps = 0
         for line in open('lamps.csv').readlines():
             line = line.strip().split(',')
             lamp = dict(
@@ -239,7 +249,11 @@ class Lamps:
         for lamp in lamp_list:
             if lamp['shape']==shape and lamp['socket']==socket and lamp['type']==type:
                 return lamp
-        return None        
+        return None 
+    def step(self):
+        self.steps += 1
+    def price_scale(self, type):
+        return math.exp(-self.steps/float(price_halflife[type]))
                 
         
 class Intervention:
@@ -328,6 +342,7 @@ for y in range(years):
     time.append(y)
     for w in range(52):
         people.step()
+        lamps.step()
         for interv in interventions:
             interv.step()
     
