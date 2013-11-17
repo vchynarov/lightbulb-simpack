@@ -7,8 +7,8 @@ cfl_lamps_for_adopters = 0.2
 halogen_prob = 0.2
 change_socket_prob = 0.15
 max_usage_per_week = 20
-decision_noise = 0.1
-years = 20
+decision_noise = 0
+years = 10
 show_graph = True
 
 import random
@@ -187,7 +187,7 @@ class Person:
 class People:
     def __init__(self, size):
         self.people = [Person() for i in range(size)]
-        self.make_friends()
+        #self.make_friends()
         
     def make_friends1(self):
         edges = 0
@@ -251,7 +251,7 @@ class Lamps:
     def __init__(self):
         self.lamps = []
         self.steps = 0
-        for line in open('lamps.csv').readlines():
+        for line in open('lamps.csv', 'U').readlines():
             line = line.strip().split(',')
             lamp = dict(
                 type = line[0],
