@@ -9,6 +9,7 @@ change_socket_prob = 0.15
 max_usage_per_week = 20
 decision_noise = 0.1
 years = 20
+show_graph = True
 
 import random
 import math
@@ -379,7 +380,7 @@ for y in range(years):
     log.count_halogen = people.get_count(type='Halogen')
     log.count_led = people.get_count(type='LED')
         
-if True:    
+if show_graph:    
     import pylab
     pylab.plot(time, type_incandescent, label='Incandescent')    
     pylab.plot(time, type_cfl, label='CFL') 
