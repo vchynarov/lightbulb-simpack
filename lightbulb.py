@@ -9,7 +9,7 @@ change_socket_prob = 0.15
 max_usage_per_week = 20
 decision_noise = 0
 years = 10
-show_graph = True
+show_graph = False
 
 import random
 import math
