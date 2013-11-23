@@ -363,7 +363,7 @@ start_light_data = {"Incandescent": 0,
                     "Halogen": 0,
                     "LED": 0}
 
-root_state = state.State.create_root(lamps, people, interventions, start_light_data)
+root_state = lightbulb_simpack.state.State.create_root(lamps, people, interventions, start_light_data)
 garlicsim.simulate(root_state, 10)
         
 if show_graph:    
