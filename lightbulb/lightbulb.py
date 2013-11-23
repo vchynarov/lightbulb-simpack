@@ -252,7 +252,9 @@ class Lamps:
     def __init__(self):
         self.lamps = []
         self.steps = 0
-        for line in open('lamps.csv', 'U').readlines():
+        import os
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        for line in open(cwd+'/lamps.csv', 'U').readlines():
             line = line.strip().split(',')
             lamp = dict(
                 type = line[0],
