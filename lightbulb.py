@@ -9,11 +9,16 @@ change_socket_prob = 0.15
 max_usage_per_week = 20
 decision_noise = 0
 years = 10
-show_graph = True
+show_graph = False
 
+import sys
 import random
 import math
+import garlicsim
+from lightbulb_simpack import state
+
 import modex
+log = modex.log()
 
 price_halflife = {
     'Incandescent': 100*52,
@@ -31,11 +36,7 @@ lum_distribution = [
     dict(socket='R7S', shape='Tubular', value=3),
     dict(socket='G24d2', shape='Reflector', value=0),
     ]        
-import random
-import math
-import modex
 
-log = modex.log()
 
 class Person:
     def __init__(self):
@@ -357,28 +358,13 @@ interventions = [
     #SubsidyIntervention(lamps, people, 'Incandescent', 5, 0.33),
     ]
 
-type_incandescent = []
-type_cfl = []
-type_halogen = []
-type_led = []
-time = []
-for y in range(years):
-    type_incandescent.append(people.get_count(type='Incandescent'))
-    type_cfl.append(people.get_count(type='CFL'))    
-    type_halogen.append(people.get_count(type='Halogen'))    
-    type_led.append(people.get_count(type='LED'))    
-    time.append(y)
-    for w in range(52):
-        people.step()
-        lamps.step()
-        for interv in interventions:
-            interv.step()
-    
-    log.time = y
-    log.count_incandescent = people.get_count(type='Incandescent')
-    log.count_cfl = people.get_count(type='CFL')
-    log.count_halogen = people.get_count(type='Halogen')
-    log.count_led = people.get_count(type='LED')
+start_light_data = {"Incandescent": 0,
+                    "CFL": 0,
+                    "Halogen": 0,
+                    "LED": 0}
+
+root_state = state.State.create_root(lamps, people, interventions, start_light_data)
+garlicsim.simulate(root_state, 10)
         
 if show_graph:    
     import pylab
